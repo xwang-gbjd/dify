@@ -9,8 +9,8 @@ const translation = {
     workflow: '工作流',
   },
   contribute: {
-    line1: '我有兴趣为 ',
-    line2: 'Dify 贡献工具。',
+    line1: '我有兴趣 ',
+    line2: '贡献工具。',
     viewGuide: '查看指南',
   },
   author: '作者',
