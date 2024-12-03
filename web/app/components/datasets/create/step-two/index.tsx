@@ -24,6 +24,7 @@ import {
   fetchDefaultProcessRule,
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -121,7 +122,8 @@ const StepTwo = ({
   const setSegmentIdentifier = useCallback((value: string) => {
     doSetSegmentIdentifier(value ? escape(value) : DEFAULT_SEGMENT_IDENTIFIER)
   }, [])
-  const [max, setMax] = useState(4000) // default chunk length
+  const [maxChunkLength, setMaxChunkLength] = useState(4000) // default chunk length
+  const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(4000)
   const [overlap, setOverlap] = useState(50)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
@@ -195,7 +197,7 @@ const StepTwo = ({
   const resetRules = () => {
     if (defaultConfig) {
       setSegmentIdentifier(defaultConfig.segmentation.separator)
-      setMax(defaultConfig.segmentation.max_tokens)
+      setMaxChunkLength(defaultConfig.segmentation.max_tokens)
       setOverlap(defaultConfig.segmentation.chunk_overlap)
       setRules(defaultConfig.pre_processing_rules)
     }
@@ -211,6 +213,10 @@ const StepTwo = ({
   }
 
   const confirmChangeCustomConfig = () => {
+    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > limitMaxChunkLength) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: limitMaxChunkLength }) })
+      return
+    }
     setCustomFileIndexingEstimate(null)
     setShowPreview()
     fetchFileIndexingEstimate()
@@ -229,7 +235,7 @@ const StepTwo = ({
         pre_processing_rules: rules,
         segmentation: {
           separator: unescape(segmentIdentifier),
-          max_tokens: max,
+          max_tokens: maxChunkLength,
           chunk_overlap: overlap,
         },
       }
@@ -334,8 +340,12 @@ const StepTwo = ({
   )
   const getCreationParams = () => {
     let params
-    if (segmentationType === SegmentType.CUSTOM && overlap > max) {
+    if (segmentationType === SegmentType.CUSTOM && overlap > maxChunkLength) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
+      return
+    }
+    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > limitMaxChunkLength) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: limitMaxChunkLength }) })
       return
     }
     if (isSetting) {
@@ -406,7 +416,8 @@ const StepTwo = ({
       const res = await fetchDefaultProcessRule({ url: '/datasets/process-rule' })
       const separator = res.rules.segmentation.separator
       setSegmentIdentifier(separator)
-      setMax(res.rules.segmentation.max_tokens)
+      setMaxChunkLength(res.rules.segmentation.max_tokens)
+      setLimitMaxChunkLength(res.limits.indexing_max_segmentation_tokens_length)
       setOverlap(res.rules.segmentation.chunk_overlap)
       setRules(res.rules.pre_processing_rules)
       setDefaultConfig(res.rules)
@@ -423,7 +434,7 @@ const StepTwo = ({
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
       setSegmentIdentifier(separator)
-      setMax(max)
+      setMaxChunkLength(max)
       setOverlap(overlap)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
@@ -646,29 +657,26 @@ const StepTwo = ({
                           }
                         />
                       </div>
-                      <input
+                      <Input
                         type="text"
-                        className={s.input}
-                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''}
-                        value={segmentIdentifier}
-                        onChange={e => doSetSegmentIdentifier(e.target.value)}
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={segmentIdentifier}
+                        onChange={e => setSegmentIdentifier(e.target.value)}
                       />
                     </div>
                   </div>
                   <div className={s.formRow}>
                     <div className='w-full'>
                       <div className={s.label}>{t('datasetCreation.stepTwo.maxLength')}</div>
-                      <div className='relative w-full'>
-                        <input
-                          type="number"
-                          className={s.input}
-                          placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
-                          value={max}
-                          min={1}
-                          onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                        />
-                        <div className='absolute top-2.5 right-2.5 text-text-tertiary system-sm-regular'>Tokens</div>
-                      </div>
+                      <Input
+                        type="number"
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
+                        value={maxChunkLength}
+                        max={limitMaxChunkLength}
+                        min={1}
+                        onChange={e => setMaxChunkLength(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      />
                     </div>
                   </div>
                   <div className={s.formRow}>
@@ -683,17 +691,14 @@ const StepTwo = ({
                           }
                         />
                       </div>
-                      <div className='relative w-full'>
-                        <input
-                          type="number"
-                          className={s.input}
-                          placeholder={t('datasetCreation.stepTwo.overlap') || ''}
-                          value={overlap}
-                          min={1}
-                          onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                        />
-                        <div className='absolute top-2.5 right-2.5 text-text-tertiary system-sm-regular'>Tokens</div>
-                      </div>
+                      <Input
+                        type="number"
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.overlap') || ''}
+                        value={overlap}
+                        min={1}
+                        onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      />
                     </div>
                   </div>
                   <div className={s.formRow}>
